@@ -9,7 +9,7 @@
 /modules.xml
 /contentModel.xml
 /projectSettingsUpdater.xml
-/.idea.PumpDrillingTelemetryCore.iml
+.idea/
 
 # Ignored default folder with query files
 /queries/
