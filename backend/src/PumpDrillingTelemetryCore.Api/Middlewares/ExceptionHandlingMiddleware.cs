@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace PumpDrillingTelemetryCore.Api.Middlewares.exceptionMiddleware
+namespace PumpDrillingTelemetryCore.Api.Middlewares
 {
     public class ExceptionHandlingMiddleware
     {
@@ -26,7 +26,8 @@ namespace PumpDrillingTelemetryCore.Api.Middlewares.exceptionMiddleware
                 {
                     Status = StatusCodes.Status400BadRequest,
                     Title = "Некорректный формат JSON",
-                    Detail = "Тело запроса содержит невалидный JSON или несоответствующие типы полей.",
+                    Detail = "Тело запроса содержит невалидный JSON, несоответствующие типы полей, " +
+                    "либо не содержит обязательное поле.",
                     Instance = context.Request.Path
                 };
                 await context.Response.WriteAsJsonAsync(problemDetails);

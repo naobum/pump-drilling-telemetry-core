@@ -1,4 +1,4 @@
-using PumpDrillingTelemetryCore.Api.Middlewares.exceptionMiddleware;
+using PumpDrillingTelemetryCore.Api.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+app.UseExceptionHandler();
 // Кастомный middleware для обработки исключений в приложении
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 // Configure the HTTP request pipeline.
