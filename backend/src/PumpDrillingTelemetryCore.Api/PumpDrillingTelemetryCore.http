@@ -1,0 +1,6 @@
+@PumpDrillingTelemetryCore_HostAddress = http://localhost:5112
+
+GET {{PumpDrillingTelemetryCore_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

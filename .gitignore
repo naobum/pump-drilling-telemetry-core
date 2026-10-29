@@ -1,0 +1,55 @@
+﻿# Default ignored files
+/shelf/
+/workspace.xml
+
+# Editor-based HTTP Client requests
+/httpRequests/
+
+# Rider ignored files
+/modules.xml
+/contentModel.xml
+/projectSettingsUpdater.xml
+/.idea.PumpDrillingTelemetryCore.iml
+
+# Ignored default folder with query files
+/queries/
+
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.ncrunch*
+*.dotCover
+
+# Visual Studio generated files
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rtifacts/
+[Tt]est[Rr]esult*/
+*.trx
+
+# Visual Studio Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+
+# Visual Studio Code workspace files
+*.code-workspace
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+*.cache
