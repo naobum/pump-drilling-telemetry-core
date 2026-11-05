@@ -35,21 +35,19 @@ namespace PumpDrillingCore.UnitTests.tests
             var expectedPath = Path.Combine(basePath, "testData", "expected_results.json");
 
             var jsonStringTest = File.ReadAllText(filePath);
-            using JsonDocument document = JsonDocument.Parse(jsonStringTest);
+            using var document = JsonDocument.Parse(jsonStringTest);
             var samples = document.RootElement.GetProperty("samples").Deserialize<PumpMeasurementSample[]>();
             
             var jsonStringExpect = File.ReadAllText(expectedPath);
-            using JsonDocument expectedDocument = JsonDocument.Parse(jsonStringExpect);
+            using var expectedDocument = JsonDocument.Parse(jsonStringExpect);
             var expected = expectedDocument.RootElement.GetProperty("results").GetProperty(fileName);
 
-            // 1. Читаем samples; null в давлении/оборотах по ТЗ делает точку невалидной
-            // (ставим для таких записей отрицательное значение, так как в c# структуры по умолчанию
-            // не могут в null, плюс в нашем случае и null, и отриц значения равноценны по выходному результату)
+            // 1. Проецируем samples в measures
             var measures = samples.Select(s => new Measure(
                 s.TimeSecond,
-                s.Pressure ?? -1.0,
-                (int)(s.Rpm ?? -1),
-                s is { IsValid: true, Pressure: not null, Rpm: not null}
+                s.Pressure,
+                s.Rpm.HasValue ? (int)s.Rpm : null,
+                s is {IsValid: true}
             ));
 
             // [Act]

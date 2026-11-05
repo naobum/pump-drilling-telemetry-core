@@ -1,7 +1,3 @@
-﻿
-using System.Collections.ObjectModel;
+﻿namespace PumpDrillingTelemetryCore.Domain.Models;
 
-namespace PumpDrillingTelemetryCore.Domain.Models
-{
-    public record WorkSessionSummary(IReadOnlyDictionary<WorkMode, double> ModeDurations, double Duration);
-}
+public record WorkSessionSummary(IReadOnlyDictionary<WorkMode, double> ModeDurations, double Duration);

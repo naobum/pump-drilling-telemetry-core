@@ -1,4 +1,3 @@
-﻿namespace PumpDrillingTelemetryCore.Domain.Models
-{
-    public record WorkInterval(double Duration, WorkMode WorkMode);
-}
+﻿namespace PumpDrillingTelemetryCore.Domain.Models;
+
+public record WorkInterval(double Duration, WorkMode WorkMode);

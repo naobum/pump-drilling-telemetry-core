@@ -1,12 +1,11 @@
-﻿namespace PumpDrillingTelemetryCore.Domain.Models
+﻿namespace PumpDrillingTelemetryCore.Domain.Models;
+
+public enum WorkMode
 {
-    public enum WorkMode
-    {
-        Stopped,
-        Gapped,
-        Unreached,
-        Low,
-        Normal,
-        High
-    }
+    Stopped,
+    Gapped,
+    Unreached,
+    Low,
+    Normal,
+    High
 }
