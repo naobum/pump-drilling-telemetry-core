@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мониторинг оборудования</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            padding: 24px;
+            min-height: 100vh;
+            color: #111827;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 640px;
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #ecfdf5;
+            padding: 6px 12px 6px 6px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .status-badge::before {
+            content: "В норме";
+            background: #86efac;
+            color: #14532d;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.is-error {
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .status-badge.is-error::before {
+            content: "Ошибка";
+            background: #fca5a5;
+            color: #7f1d1d;
+        }
+
+        .status-badge.is-warn {
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .status-badge.is-warn::before {
+            content: "Внимание";
+            background: #fcd34d;
+            color: #78350f;
+        }
+
+        /* ===== SECTION TITLES ===== */
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        /* ===== EQUIPMENT HEADER ===== */
+        .equipment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .equipment-header .section-title {
+            margin: 0;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: inherit;
+            color: #111827;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .upload-btn:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        .upload-btn:active {
+            background: #f3f4f6;
+        }
+
+        .upload-btn input {
+            display: none;
+        }
+
+        .dataset-name {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-left: auto;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+        }
+
+        /* ===== CARD ===== */
+        .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        /* ===== EQUIPMENT CARD ===== */
+        .equipment-card {
+            margin-bottom: 24px;
+        }
+
+        .equipment-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .equipment-card-head h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .pill-green {
+            background: #86efac;
+            color: #14532d;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 999px;
+        }
+
+        .pill-green.is-error {
+            background: #fca5a5;
+            color: #7f1d1d;
+        }
+
+        .pill-green.is-warn {
+            background: #fcd34d;
+            color: #78350f;
+        }
+
+        .pill-green.is-empty {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .metric-row .value {
+            color: #111827;
+            font-weight: 600;
+        }
+
+        /* ===== CHARTS ===== */
+        .charts-section {
+            margin-bottom: 24px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 520px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            padding: 12px;
+        }
+
+        .chart-card h4 {
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 120px;
+            width: 100%;
+        }
+
+        .chart-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+        /* ===== LOGS ===== */
+        .logs-card {
+            padding: 16px;
+        }
+
+        .logs-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .logs-head h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .logs-count {
+            background: #f9fafb;
+            color: #6b7280;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 999px;
+        }
+
+        .logs-list {
+            max-height: 180px;
+            overflow-y: auto;
+            border-radius: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+
+        .logs-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .logs-list::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 6px;
+        }
+
+        .logs-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            border-bottom: 1px solid #f3f4f6;
+            align-items: flex-start;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .log-item:hover {
+            background: #f9fafb;
+        }
+
+        .log-time {
+            color: #9ca3af;
+            font-size: 11px;
+            white-space: nowrap;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            min-width: 56px;
+        }
+
+        .log-msg {
+            color: #374151;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .log-level-ok {
+            color: #16a34a;
+        }
+
+        .log-level-warn {
+            color: #d97706;
+        }
+
+        .log-level-err {
+            color: #dc2626;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 0;
+            gap: 8px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .empty-state svg {
+            color: #9ca3af;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>Мониторинг оборудования</h1>
+            <div class="status-badge" id="statusBadge">Все агрегаты в норме</div>
+        </div>
+
+        <!-- EQUIPMENT -->
+        <div class="equipment-header">
+            <div class="section-title">Оборудование</div>
+            <label class="upload-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Загрузить файл
+                <input type="file" id="fileInput" accept=".json,application/json">
+            </label>
+            <span class="dataset-name" id="datasetName"></span>
+        </div>
+
+        <div class="card equipment-card">
+            <div class="equipment-card-head">
+                <h3 id="eqName">Насос</h3>
+                <span class="pill-green" id="eqStatus">В норме</span>
+            </div>
+            <div class="metrics">
+                <div class="metric-row"><span>Время работы</span><span class="value" id="mTime">—</span></div>
+                <div class="metric-row"><span>Давление</span><span class="value" id="mPressure">—</span></div>
+                <div class="metric-row"><span>Обороты</span><span class="value" id="mRpm">—</span></div>
+                <div class="metric-row"><span>Режим работы</span><span class="value" id="mMode">—</span></div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="charts-section">
+            <div class="section-title">Графики</div>
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <h4>Обороты rpm</h4>
+                    <div class="chart-container"><canvas id="chartRpm"></canvas></div>
+                </div>
+                <div class="card chart-card">
+                    <h4>Давление МПа</h4>
+                    <div class="chart-container"><canvas id="chartPressure"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGS -->
+        <div class="section-title">Логи</div>
+        <div class="card logs-card">
+            <div class="logs-head">
+                <h3>Логи</h3>
+                <span class="logs-count" id="logsCount">0 записей</span>
+            </div>
+
+            <div id="logsEmpty" class="empty-state">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                    <path
+                        d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                </svg>
+                Нет доступных записей
+            </div>
+
+            <div id="logsList" class="logs-list" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        /* ===========================================================
+           ГРАФИКИ (Chart.js)
+           Используем линейный X-масштаб по реальному времени t_s,
+           чтобы разрывы (например 03_gap_20min) были видны визуально.
+           =========================================================== */
+        const chartDefaults = (yTitle) => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 300 },
+            parsing: false, // сами подаём {x, y}
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    padding: 8,
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 11 },
+                    callbacks: {
+                        title: (items) => items.length ? `t = ${items[0].parsed.x} с` : '',
+                        label: (item) => `${yTitle}: ${item.parsed.y}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    grid: { display: false },
+                    ticks: { display: false },
+                    border: { display: true, color: '#e5e7eb' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { display: false },
+                    border: { display: true, color: '#e5e7eb' }
+                }
+            }
+        });
+
+        const chartRpm = new Chart(document.getElementById('chartRpm'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    data: [],
+                    borderColor: '#ef4444',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 3,
+                    tension: 0.15,
+                    spanGaps: false // не соединять разрывы
+                }]
+            },
+            options: chartDefaults('об/мин')
+        });
+
+        const chartPressure = new Chart(document.getElementById('chartPressure'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    data: [],
+                    borderColor: '#ef4444',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 3,
+                    tension: 0.15,
+                    spanGaps: false
+                }]
+            },
+            options: chartDefaults('МПа')
+        });
+
+        /* Обновить график массивом точек [{x, y}, ...] */
+        function setChartData(chart, points) {
+            chart.data.datasets[0].data = points;
+            chart.update();
+        }
+
+        // API для консоли/внешнего кода
+        window.chartRpm = chartRpm;
+        window.chartPressure = chartPressure;
+        window.setChartData = setChartData;
+
+        /* ===========================================================
+           ЛОГИ
+           =========================================================== */
+        const logsListEl = document.getElementById('logsList');
+        const logsEmptyEl = document.getElementById('logsEmpty');
+        const logsCountEl = document.getElementById('logsCount');
+
+        let logs = []; // { time: string, message: string, level: 'ok'|'warn'|'err'|'' }
+
+        function renderLogs() {
+            logsCountEl.textContent = `${logs.length} ${plural(logs.length, 'запись', 'записи', 'записей')}`;
+
+            if (!logs.length) {
+                logsListEl.style.display = 'none';
+                logsEmptyEl.style.display = 'flex';
+                return;
+            }
+
+            logsEmptyEl.style.display = 'none';
+            logsListEl.style.display = 'block';
+            // новые сверху
+            logsListEl.innerHTML = logs.slice().reverse().map(log => `
+    <div class="log-item">
+      <span class="log-time">${escapeHtml(log.time || '')}</span>
+      <span class="log-msg ${log.level ? 'log-level-' + log.level : ''}">${escapeHtml(log.message || '')}</span>
+    </div>
+  `).join('');
+        }
+
+        function plural(n, one, few, many) {
+            const mod10 = n % 10, mod100 = n % 100;
+            if (mod10 === 1 && mod100 !== 11) return one;
+            if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+            return many;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        window.addLog = (entry) => { logs.push(entry); renderLogs(); };
+        window.setLogs = (arr) => { logs = arr.slice(); renderLogs(); };
+        window.clearLogs = () => { logs = []; renderLogs(); };
+
+        renderLogs();
+
+        /* ===========================================================
+           ОБРАБОТКА ДАННЫХ ИЗ JSON
+           =========================================================== */
+
+        /**
+         * Проверяет точку на валидность:
+         * - valid !== false
+         * - значения — числа (или приводятся к числу), не null, не NaN
+         */
+        function isValidSample(s) {
+            if (!s || typeof s !== 'object') return false;
+            if (s.valid === false) return false;
+            const t = toNumber(s.t_s);
+            if (t === null) return false;
+            return true;
+        }
+
+        function toNumber(v) {
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+            if (typeof v === 'string') {
+                const n = Number(v.trim());
+                return Number.isFinite(n) ? n : null;
+            }
+            return null;
+        }
+
+        /**
+         * Из samples делаем два массива точек для графиков.
+         * Дубли t_s схлопываются: оставляем последнюю запись (или первую — по желанию).
+         * Здесь — первая, чтобы не терять начало.
+         */
+        function buildChartSeries(samples) {
+            const rpmMap = new Map();      // t -> y
+            const pressureMap = new Map(); // t -> y
+
+            let invalidCount = 0;
+            let outOfOrder = false;
+            let prevT = -Infinity;
+
+            for (const s of samples) {
+                if (!isValidSample(s)) { invalidCount++; continue; }
+
+                const t = toNumber(s.t_s);
+                if (t < prevT) outOfOrder = true;
+                prevT = t;
+
+                const p = toNumber(s.pressure_mpa);
+                const r = toNumber(s.rpm);
+
+                // не берём отрицательные значения — считаем их браком датчика
+                if (p !== null && p >= 0 && !pressureMap.has(t)) {
+                    pressureMap.set(t, p);
+                }
+                if (r !== null && r >= 0 && !rpmMap.has(t)) {
+                    rpmMap.set(t, r);
+                }
+            }
+
+            const toPoints = (map) =>
+                Array.from(map.entries())
+                    .map(([x, y]) => ({ x, y }))
+                    .sort((a, b) => a.x - b.x);
+
+            return {
+                rpm: toPoints(rpmMap),
+                pressure: toPoints(pressureMap),
+                invalidCount,
+                outOfOrder
+            };
+        }
+
+        /** Обновляем карточку "Оборудование" */
+        function updateEquipmentCard(samples, chartSeries) {
+            const statusEl = document.getElementById('eqStatus');
+            const badgeEl = document.getElementById('statusBadge');
+            const nameEl = document.getElementById('eqName');
+
+            const mTime = document.getElementById('mTime');
+            const mPressure = document.getElementById('mPressure');
+            const mRpm = document.getElementById('mRpm');
+            const mMode = document.getElementById('mMode');
+
+            if (!samples || samples.length === 0) {
+                statusEl.textContent = 'Нет данных';
+                statusEl.className = 'pill-green is-empty';
+                badgeEl.className = 'status-badge is-warn';
+                nameEl.textContent = 'Насос';
+                mTime.textContent = '—';
+                mPressure.textContent = '—';
+                mRpm.textContent = '—';
+                mMode.textContent = '—';
+                return;
+            }
+
+            // Последняя валидная точка (по t)
+            const sorted = samples.slice().sort((a, b) => toNumber(a.t_s) - toNumber(b.t_s));
+            const last = sorted[sorted.length - 1];
+
+            const lastP = toNumber(last?.pressure_mpa);
+            const lastR = toNumber(last?.rpm);
+
+            mPressure.textContent = lastP !== null ? `${lastP} МПа` : '—';
+            mRpm.textContent = lastR !== null ? `${Math.round(lastR)} об/мин` : '—';
+            mTime.textContent = `${Math.round(toNumber(last?.t_s) || 0)} с`;
+
+            // Режим работы: по оборотам
+            let mode = '—';
+            if (lastR === 0) mode = 'простой';
+            else if (lastR !== null && lastR < 100) mode = 'разгон';
+            else if (lastR !== null) mode = 'рабочий';
+            mMode.textContent = mode;
+
+            // Статус
+            if (!chartSeries.rpm.length && !chartSeries.pressure.length) {
+                statusEl.textContent = 'Нет валидных данных';
+                statusEl.className = 'pill-green is-empty';
+                badgeEl.className = 'status-badge is-warn';
+                nameEl.textContent = 'Насос';
+            } else {
+                statusEl.textContent = 'В норме';
+                statusEl.className = 'pill-green';
+                badgeEl.className = 'status-badge';
+                nameEl.textContent = 'Насос';
+            }
+        }
+
+        /** Полный разбор JSON-файла */
+        async function handleJsonFile(file) {
+            const text = await file.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                throw new Error('Некорректный JSON: ' + e.message);
+            }
+
+            // Валидация верхнего уровня
+            if (!data || typeof data !== 'object') throw new Error('Корень JSON должен быть объектом');
+            if (!Array.isArray(data.samples)) throw new Error('Нет поля samples (ожидается массив)');
+
+            const samples = data.samples;
+
+            // ---- Собираем серии для графиков ----
+            const series = buildChartSeries(samples);
+            setChartData(chartRpm, series.rpm);
+            setChartData(chartPressure, series.pressure);
+
+            // ---- Карточка оборудования ----
+            updateEquipmentCard(samples, series);
+
+            // ---- Логи о загрузке ----
+            addLog({ time: fmtTime(new Date()), message: `Файл «${file.name}» загружен`, level: 'ok' });
+            addLog({ time: '', message: `dataset_id: ${data.dataset_id ?? '—'}`, level: '' });
+            addLog({ time: '', message: `точек: ${samples.length}, валидных: ${samples.length - series.invalidCount}`, level: '' });
+
+            if (data.synthetic === true) {
+                addLog({ time: '', message: 'synthetic: true (тестовые данные)', level: 'warn' });
+            }
+            if (series.invalidCount > 0) {
+                addLog({
+                    time: '', level: 'warn',
+                    message: `пропущено/невалидно точек: ${series.invalidCount}`
+                });
+            }
+            if (series.outOfOrder) {
+                addLog({ time: '', level: 'warn', message: 'в samples время t_s не по возрастанию' });
+            }
+
+            // Проверка полноты значений
+            const noRpm = samples.filter(s => s.valid !== false && toNumber(s.rpm) === null).length;
+            const noPressure = samples.filter(s => s.valid !== false && toNumber(s.pressure_mpa) === null).length;
+            if (noRpm > 0) addLog({ time: '', level: 'warn', message: `нет поля rpm у ${noRpm} точек` });
+            if (noPressure > 0) addLog({ time: '', level: 'warn', message: `нет поля pressure_mpa у ${noPressure} точек` });
+
+            // Дубли времени
+            const seen = new Set();
+            let dups = 0;
+            for (const s of samples) {
+                const t = toNumber(s.t_s);
+                if (t === null) continue;
+                if (seen.has(t)) dups++; else seen.add(t);
+            }
+            if (dups > 0) addLog({ time: '', level: 'warn', message: `дубликатов t_s: ${dups}` });
+
+            // Границы диапазона — если есть
+            if (series.pressure.length) {
+                const first = series.pressure[0];
+                const last = series.pressure[series.pressure.length - 1];
+                addLog({ time: '', message: `диапазон t: ${first.x}…${last.x} с`, level: '' });
+            }
+
+            // ---- заголовок dataset ----
+            document.getElementById('datasetName').textContent = data.dataset_id ?? '';
+
+            // ---- Итоговый статус badge ----
+            if (!series.rpm.length && !series.pressure.length) {
+                addLog({ time: '', level: 'err', message: 'нет валидных данных для графиков' });
+            }
+        }
+
+        function fmtTime(d) {
+            return d.toLocaleTimeString('ru-RU');
+        }
+
+        /* ===========================================================
+           ЗАГРУЗКА ФАЙЛА
+           =========================================================== */
+        const fileInput = document.getElementById('fileInput');
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            try {
+                await handleJsonFile(file);
+            } catch (err) {
+                console.error(err);
+                addLog({ time: fmtTime(new Date()), message: `Ошибка: ${err.message}`, level: 'err' });
+                alert('Не удалось прочитать файл:\n' + err.message);
+            } finally {
+                fileInput.value = '';
+            }
+        });
+    </script>
+</body>
+
+</html>
