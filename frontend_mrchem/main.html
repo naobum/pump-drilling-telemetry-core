@@ -336,6 +336,9 @@
             const tag = sourceLabel ? ` [${sourceLabel}]` : '';
             addLog({ time: fmtTime(new Date()), message: `Данные обновлены${tag}`, level: 'ok' });
             addLog({ time: '', message: `dataset_id: ${data.dataset_id ?? '—'}, точек: ${data.samples.length}`, level: '' });
+            if (modalFrame.style.display === 'block') {
+                sendToModal({ type: 'modal:update', samples: window.lastSamples });
+            }
 
             if (data.synthetic === true) addLog({ time: '', level: 'warn', message: 'synthetic: true (тестовые данные)' });
             if (series.invalidCount > 0) addLog({ time: '', level: 'warn', message: `невалидных точек: ${series.invalidCount}` });
