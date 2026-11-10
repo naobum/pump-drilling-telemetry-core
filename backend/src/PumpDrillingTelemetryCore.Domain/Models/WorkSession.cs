@@ -4,8 +4,8 @@ namespace PumpDrillingTelemetryCore.Domain.Models;
 
 public class WorkSession
 {
-    public IReadOnlyCollection<Measure> Measures { get; } = [];
-    public IReadOnlyCollection<WorkInterval> WorkIntervals { get; } = [];
+    public IReadOnlyCollection<Measure> Measures { get; }
+    public IReadOnlyCollection<WorkInterval> WorkIntervals { get; }
 
     private WorkSession(IReadOnlyCollection<Measure> measures, IReadOnlyCollection<WorkInterval> intervals)
     {
@@ -29,20 +29,12 @@ public class WorkSession
         }
         else if (firstMeasure is { Rpm: >= 50, Pressure: >= 1.0 })
         {
-            switch (firstMeasure.Pressure)
+            return firstMeasure.Pressure switch
             {
-                case < 5.00:
-                    return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds,
-                        WorkMode.Low);
-
-                case < 10.0:
-                    return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds,
-                        WorkMode.Normal);
-
-                default:
-                    return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds,
-                        WorkMode.High);
-            }
+                < 5.00 => new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.Low),
+                < 10.0 => new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.Normal),
+                _ => new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.High)
+            };
         }
         else
         {
