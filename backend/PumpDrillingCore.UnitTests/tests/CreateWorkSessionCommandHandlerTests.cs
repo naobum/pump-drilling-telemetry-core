@@ -1,7 +1,6 @@
 using System.Text.Json;
 using PumpDrillingTelemetryCore.Application.Commands.CreateWorkSession;
 using PumpDrillingTelemetryCore.Domain.Models;
-using Xunit;
 
 namespace PumpDrillingCore.UnitTests.tests;
 
