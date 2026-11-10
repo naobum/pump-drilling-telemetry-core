@@ -1,37 +1,24 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using PumpDrillingTelemetryCore.Api.Errors;
 
 namespace PumpDrillingTelemetryCore.Api.Middlewares
 {
-    public class ExceptionHandlingMiddleware
+    public class ExceptionHandlingMiddleware(RequestDelegate next)
     {
-        private readonly RequestDelegate _next;
-
-        public ExceptionHandlingMiddleware(RequestDelegate next)
-        {
-            _next = next;
-        }
-
         public async Task InvokeAsync(HttpContext context)
         {
             try
             {
-                await _next(context);
+                await next(context);
             }
 
-            // Отлавливаем исключение для JSON
+            // Handling JSON deserialization exceptions
             catch (System.Text.Json.JsonException ex)
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                var problemDetails = new ProblemDetails
-                {
-                    Status = StatusCodes.Status400BadRequest,
-                    Title = "Некорректный формат JSON",
-                    Detail = "Тело запроса содержит невалидный JSON, несоответствующие типы полей, " +
-                    "либо не содержит обязательное поле.",
-                    Instance = context.Request.Path
-                };
+                var problemDetails = JsonErrorResponse.Create(ex, context.Request.Path);
                 await context.Response.WriteAsJsonAsync(problemDetails);
             }
         }
     }
 }
+

@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "10_duplicate_time",
+  "synthetic": true,
+  "samples": [
+    {
+      "t_s": 0,
+      "pressure_mpa": 6.0,
+      "rpm": 100.0,
+      "valid": true
+    },
+    {
+      "t_s": 0,
+      "pressure_mpa": 6.0,
+      "rpm": 100.0,
+      "valid": true
+    },
+    {
+      "t_s": 1,
+      "pressure_mpa": 6.0,
+      "rpm": 100.0,
+      "valid": true
+    }
+  ]
+}

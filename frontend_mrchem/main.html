@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мониторинг оборудования</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>Мониторинг оборудования</h1>
+            <div class="status-badge" id="statusBadge">Все агрегаты в норме</div>
+        </div>
+
+        <!-- EQUIPMENT HEADER -->
+        <div class="equipment-header">
+            <div class="section-title">Оборудование</div>
+
+            <label class="upload-btn" id="uploadBtn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span id="uploadBtnText">Загрузить файл</span>
+                <input type="file" id="fileInput" accept=".json,application/json">
+            </label>
+
+            <span class="dataset-name" id="datasetName"></span>
+            <span class="conn-state">
+                <span class="conn-dot" id="connDot"></span>
+                <span id="connText">не подключено</span>
+            </span>
+        </div>
+
+        <div class="card equipment-card">
+            <div class="equipment-card-head">
+                <h3 id="eqName">Насос</h3>
+                <span class="pill-green" id="eqStatus">В норме</span>
+            </div>
+            <div class="metrics">
+                <div class="metric-row"><span>Время работы</span><span class="value" id="mTime">—</span></div>
+                <div class="metric-row"><span>Давление</span><span class="value" id="mPressure">—</span></div>
+                <div class="metric-row"><span>Обороты</span><span class="value" id="mRpm">—</span></div>
+                <div class="metric-row"><span>Режим работы</span><span class="value" id="mMode">—</span></div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="charts-section">
+            <div class="section-title">Графики</div>
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <h4>Обороты rpm</h4>
+                    <div class="chart-container"><canvas id="chartRpm"></canvas></div>
+                </div>
+                <div class="card chart-card">
+                    <h4>Давление МПа</h4>
+                    <div class="chart-container"><canvas id="chartPressure"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGS -->
+        <div class="section-title">Логи</div>
+        <div class="card logs-card">
+            <div class="logs-head">
+                <h3>Логи</h3>
+                <span class="logs-count" id="logsCount">0 записей</span>
+            </div>
+
+            <div id="logsEmpty" class="empty-state">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                    <path
+                        d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                </svg>
+                Нет доступных записей
+            </div>
+
+            <div id="logsList" class="logs-list" style="display:none;"></div>
+        </div>
+    </div>
+    <iframe id="modalFrame" src="./modal.html" title="Анализ работы" style="position:fixed;inset:0;width:100%;height:100%;border:0;
+               background:transparent;display:none;z-index:1000;"></iframe>
+    <script>
+        /* ===========================================================
+           ⚙️  НАСТРОЙКИ БЭКА
+           =========================================================== */
+        const API = {
+            base: 'http://localhost:5112',
+            session: '/api/pump/work-session',          // GET — текущая сессия
+            importFile: '/api/pump/work-session/import',   // POST multipart/form-data
+        };
+
+        /* ===========================================================
+           ГРАФИКИ
+           =========================================================== */
+        const chartDefaults = (yTitle) => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 200 },
+            parsing: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    padding: 8,
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 11 },
+                    callbacks: {
+                        title: (items) => items.length ? `t = ${items[0].parsed.x} с` : '',
+                        label: (item) => `${yTitle}: ${item.parsed.y}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    grid: {
+                        display: true,
+                        color: '#e5e7eb', // цвет сетки
+                        drawBorder: true
+                    },
+                    ticks: {
+                        display: true,
+                        color: '#6b7280', // цвет цифр
+                        font: { size: 10 }
+                    },
+                    border: { display: true, color: '#9ca3af' }
+                },
+                y: {
+                    type: 'linear',
+                    grid: {
+                        display: true,
+                        color: '#e5e7eb',
+                        drawBorder: true
+                    },
+                    ticks: {
+                        display: true,
+                        color: '#6b7280',
+                        font: { size: 10 }
+                    },
+                    border: { display: true, color: '#9ca3af' }
+                }
+            }
+        });
+
+        const chartRpm = new Chart(document.getElementById('chartRpm'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    data: [], borderColor: '#ef4444', borderWidth: 1.5,
+                    pointRadius: 0, pointHoverRadius: 3, tension: 0.15, spanGaps: false
+                }]
+            },
+            options: chartDefaults('об/мин')
+        });
+
+        const chartPressure = new Chart(document.getElementById('chartPressure'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    data: [], borderColor: '#ef4444', borderWidth: 1.5,
+                    pointRadius: 0, pointHoverRadius: 3, tension: 0.15, spanGaps: false
+                }]
+            },
+            options: chartDefaults('МПа')
+        });
+
+        window.chartRpm = chartRpm;
+        window.chartPressure = chartPressure;
+
+        function setChartData(chart, points) {
+            chart.data.datasets[0].data = points;
+            chart.update('none');
+        }
+        window.setChartData = setChartData;
+
+        /* ===========================================================
+           ЛОГИ
+           =========================================================== */
+        const logsListEl = document.getElementById('logsList');
+        const logsEmptyEl = document.getElementById('logsEmpty');
+        const logsCountEl = document.getElementById('logsCount');
+        let logs = [];
+
+        function renderLogs() {
+            logsCountEl.textContent = `${logs.length} ${plural(logs.length, 'запись', 'записи', 'записей')}`;
+            if (!logs.length) {
+                logsListEl.style.display = 'none';
+                logsEmptyEl.style.display = 'flex';
+                return;
+            }
+            logsEmptyEl.style.display = 'none';
+            logsListEl.style.display = 'block';
+            logsListEl.innerHTML = logs.slice().reverse().map(log => `
+    <div class="log-item">
+      <span class="log-time">${escapeHtml(log.time || '')}</span>
+      <span class="log-msg ${log.level ? 'log-level-' + log.level : ''}">${escapeHtml(log.message || '')}</span>
+    </div>
+  `).join('');
+        }
+
+        function plural(n, one, few, many) {
+            const m10 = n % 10, m100 = n % 100;
+            if (m10 === 1 && m100 !== 11) return one;
+            if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+            return many;
+        }
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+        function addLog(e) { logs.push(e); renderLogs(); }
+        window.addLog = addLog;
+        window.setLogs = (arr) => { logs = arr.slice(); renderLogs(); };
+        window.clearLogs = () => { logs = []; renderLogs(); };
+        renderLogs();
+
+        /* ===========================================================
+           СТАТУС ПОДКЛЮЧЕНИЯ
+           =========================================================== */
+        const connDot = document.getElementById('connDot');
+        const connText = document.getElementById('connText');
+        function setConnState(state, text) {
+            connDot.className = 'conn-dot' + (state ? ' ' + state : '');
+            connText.textContent = text;
+        }
+
+        /* ===========================================================
+           ОБРАБОТКА ДАННЫХ
+           =========================================================== */
+        function toNumber(v) {
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+            if (typeof v === 'string') {
+                const n = Number(v.trim());
+                return Number.isFinite(n) ? n : null;
+            }
+            return null;
+        }
+
+        function isValidSample(s) {
+            if (!s || typeof s !== 'object') return false;
+            if (s.valid === false) return false;
+            return toNumber(s.t_s) !== null;
+        }
+
+        function buildChartSeries(samples) {
+            const rpmMap = new Map(), pressureMap = new Map();
+            let invalidCount = 0, outOfOrder = false, prevT = -Infinity;
+
+            for (const s of samples) {
+                if (!isValidSample(s)) { invalidCount++; continue; }
+                const t = toNumber(s.t_s);
+                if (t < prevT) outOfOrder = true;
+                prevT = t;
+                const p = toNumber(s.pressure_mpa);
+                const r = toNumber(s.rpm);
+                if (p !== null && p >= 0 && !pressureMap.has(t)) pressureMap.set(t, p);
+                if (r !== null && r >= 0 && !rpmMap.has(t)) rpmMap.set(t, r);
+            }
+
+            const toPoints = (map) =>
+                Array.from(map.entries()).map(([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x);
+
+            return {
+                rpm: toPoints(rpmMap),
+                pressure: toPoints(pressureMap),
+                invalidCount, outOfOrder
+            };
+        }
+
+        function updateEquipmentCard(samples, series) {
+            const statusEl = document.getElementById('eqStatus');
+            const badgeEl = document.getElementById('statusBadge');
+            const mTime = document.getElementById('mTime');
+            const mPressure = document.getElementById('mPressure');
+            const mRpm = document.getElementById('mRpm');
+            const mMode = document.getElementById('mMode');
+
+            if (!samples || samples.length === 0) {
+                statusEl.textContent = 'Нет данных';
+                statusEl.className = 'pill-green is-empty';
+                badgeEl.className = 'status-badge is-warn';
+                mTime.textContent = mPressure.textContent = mRpm.textContent = mMode.textContent = '—';
+                return;
+            }
+
+            const sorted = samples.slice().sort((a, b) => toNumber(a.t_s) - toNumber(b.t_s));
+            const last = sorted[sorted.length - 1];
+            const lastP = toNumber(last?.pressure_mpa);
+            const lastR = toNumber(last?.rpm);
+
+            mPressure.textContent = lastP !== null ? `${lastP} МПа` : '—';
+            mRpm.textContent = lastR !== null ? `${Math.round(lastR)} об/мин` : '—';
+            mTime.textContent = `${Math.round(toNumber(last?.t_s) || 0)} с`;
+
+            let mode = '—';
+            if (lastR === 0) mode = 'простой';
+            else if (lastR !== null && lastR < 100) mode = 'разгон';
+            else if (lastR !== null) mode = 'рабочий';
+            mMode.textContent = mode;
+
+            const hasData = series.rpm.length || series.pressure.length;
+            statusEl.textContent = hasData ? 'В норме' : 'Нет валидных данных';
+            statusEl.className = hasData ? 'pill-green' : 'pill-green is-empty';
+            badgeEl.className = hasData ? 'status-badge' : 'status-badge is-warn';
+        }
+
+        /** Главная функция — принимает ответ бэка и обновляет UI */
+        function applyData(data, sourceLabel = '') {
+            if (!data || typeof data !== 'object' || !Array.isArray(data.samples)) {
+                throw new Error('Ожидается объект с полем samples: []');
+            }
+            window.lastSamples = data.samples;
+            const series = buildChartSeries(data.samples);
+            setChartData(chartRpm, series.rpm);
+            setChartData(chartPressure, series.pressure);
+            updateEquipmentCard(data.samples, series);
+
+            document.getElementById('datasetName').textContent = data.dataset_id ?? '';
+
+            const tag = sourceLabel ? ` [${sourceLabel}]` : '';
+            addLog({ time: fmtTime(new Date()), message: `Данные обновлены${tag}`, level: 'ok' });
+            addLog({ time: '', message: `dataset_id: ${data.dataset_id ?? '—'}, точек: ${data.samples.length}`, level: '' });
+            if (modalFrame.style.display === 'block') {
+                sendToModal({ type: 'modal:update', samples: window.lastSamples });
+            }
+
+            if (data.synthetic === true) addLog({ time: '', level: 'warn', message: 'synthetic: true (тестовые данные)' });
+            if (series.invalidCount > 0) addLog({ time: '', level: 'warn', message: `невалидных точек: ${series.invalidCount}` });
+            if (series.outOfOrder) addLog({ time: '', level: 'warn', message: 't_s не по возрастанию' });
+
+            const noRpm = data.samples.filter(s => s.valid !== false && toNumber(s.rpm) === null).length;
+            const noP = data.samples.filter(s => s.valid !== false && toNumber(s.pressure_mpa) === null).length;
+            if (noRpm > 0) addLog({ time: '', level: 'warn', message: `нет rpm у ${noRpm} точек` });
+            if (noP > 0) addLog({ time: '', level: 'warn', message: `нет pressure_mpa у ${noP} точек` });
+
+            const seen = new Set(); let dups = 0;
+            for (const s of data.samples) {
+                const t = toNumber(s.t_s); if (t === null) continue;
+                if (seen.has(t)) dups++; else seen.add(t);
+            }
+            if (dups > 0) addLog({ time: '', level: 'warn', message: `дубликатов t_s: ${dups}` });
+
+            if (series.pressure.length) {
+                const a = series.pressure[0], b = series.pressure[series.pressure.length - 1];
+                addLog({ time: '', message: `диапазон t: ${a.x}…${b.x} с`, level: '' });
+            }
+        }
+        window.applyData = applyData;
+
+        function fmtTime(d) { return d.toLocaleTimeString('ru-RU'); }
+
+        /* ===========================================================
+           🌐 GET — загрузка текущей сессии при старте страницы
+           =========================================================== */
+        async function loadSession() {
+            setConnState('wait', 'загрузка сессии…');
+            try {
+                const res = await fetch(API.base + API.session, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (res.status === 404 || res.status === 204) {
+                    // сессии пока нет — это нормально
+                    setConnState('ok', 'подключено (нет данных)');
+                    addLog({ time: fmtTime(new Date()), message: 'Сессия на бэке пока пуста', level: 'warn' });
+                    return;
+                }
+                if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+                const data = await res.json();
+                applyData(data, 'session');
+                setConnState('ok', 'подключено');
+            } catch (e) {
+                setConnState('err', 'нет связи');
+                addLog({ time: fmtTime(new Date()), level: 'err', message: `GET ${API.session}: ${e.message}` });
+                console.error(e);
+            }
+        }
+
+        /* ===========================================================
+           📤 POST — отправка .json файла на бэк (multipart/form-data)
+           =========================================================== */
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadBtnText = document.getElementById('uploadBtnText');
+
+        /* ===========================================================
+        📂 ЗАГРУЗКА ФАЙЛА + СИМУЛЯЦИЯ РЕАЛЬНОГО ВРЕМЕНИ
+        =========================================================== */
+        let playbackState = null; // { timer, samples, idx, total }
+
+        function stopPlayback() {
+            if (playbackState?.timer) {
+                clearInterval(playbackState.timer);
+                playbackState = null;
+                addLog({ time: fmtTime(new Date()), message: 'Воспроизведение остановлено', level: 'warn' });
+                uploadBtnText.textContent = 'Загрузить файл';
+                uploadBtn.classList.remove('is-loading');
+            }
+        }
+
+        function playSamples(allSamples, datasetId = '') {
+            stopPlayback(); // на случай, если уже что-то играет
+
+            // Сбрасываем графики
+            setChartData(chartRpm, []);
+            setChartData(chartPressure, []);
+            window.lastSamples = [];
+
+            const speedMs = 1000; // 1 точка = 1 секунда
+            const buffered = [];   // точки, которые уже проигрались
+
+            playbackState = { timer: null, samples: allSamples, idx: 0, total: allSamples.length };
+
+            addLog({
+                time: fmtTime(new Date()),
+                message: `▶ Старт воспроизведения: ${allSamples.length} точек, ${speedMs / 1000} с/точка`,
+                level: 'ok',
+            });
+
+            uploadBtn.classList.add('is-loading');
+            uploadBtnText.textContent = '⏹ Остановить';
+
+            // Кнопка превращается в «Стоп»
+            const stopHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                stopPlayback();
+                uploadBtn.removeEventListener('click', stopHandler, true);
+            };
+            uploadBtn.addEventListener('click', stopHandler, true);
+
+            // Тикер
+            playbackState.timer = setInterval(() => {
+                if (!playbackState) return;
+
+                const { idx, samples } = playbackState;
+                if (idx >= samples.length) {
+                    clearInterval(playbackState.timer);
+                    playbackState = null;
+                    uploadBtn.classList.remove('is-loading');
+                    uploadBtnText.textContent = 'Загрузить файл';
+                    addLog({
+                        time: fmtTime(new Date()),
+                        message: `✔ Воспроизведение завершено (${samples.length} точек)`,
+                        level: 'ok',
+                    });
+                    return;
+                }
+
+                // Добавляем очередную точку
+                buffered.push(samples[idx]);
+                playbackState.idx++;
+
+                // Применяем «накопленные» точки
+                applyData({
+                    dataset_id: datasetId,
+                    samples: buffered,
+                }, `live ${playbackState.idx}/${playbackState.total}`);
+            }, speedMs);
+        }
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            if (!/\.json$/i.test(file.name)) {
+                addLog({ time: fmtTime(new Date()), level: 'err', message: `Файл должен быть .json: ${file.name}` });
+                fileInput.value = '';
+                return;
+            }
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                if (!Array.isArray(data.samples)) {
+                    throw new Error('В файле нет поля samples: []');
+                }
+                if (!data.samples.length) {
+                    addLog({
+                        time: fmtTime(new Date()),
+                        message: `Файл «${file.name}» пуст`,
+                        level: 'warn',
+                    });
+                    return;
+                }
+
+                addLog({
+                    time: fmtTime(new Date()),
+                    message: `Файл «${file.name}» загружен (${data.samples.length} точек)`,
+                    level: 'ok',
+                });
+
+                playSamples(data.samples, data.dataset_id ?? file.name);
+
+            } catch (err) {
+                console.error(err);
+                addLog({
+                    time: fmtTime(new Date()),
+                    level: 'err',
+                    message: `Ошибка чтения файла: ${err.message}`,
+                });
+            } finally {
+                fileInput.value = '';
+            }
+        });
+
+        // Остановить воспроизведение при закрытии страницы
+        window.addEventListener('beforeunload', stopPlayback);
+        /* ===========================================================
+           🚀 СТАРТ
+           =========================================================== */
+        loadSession();
+        /* ===========================================================
+            🪟 МОДАЛКА
+         =========================================================== */
+        const modalFrame = document.getElementById('modalFrame');
+        const equipmentCard = document.querySelector('.equipment-card');
+
+        let modalReady = false;
+
+        function sendToModal(payload) {
+            if (!modalFrame.contentWindow) return;
+            modalFrame.contentWindow.postMessage(payload, '*');
+        }
+
+        function openModal() {
+            modalFrame.style.display = 'block';
+            sendToModal({ type: 'modal:open', samples: window.lastSamples || [] });
+        }
+
+        function closeModal() {
+            modalFrame.style.display = 'none';
+        }
+
+        // Клик по карточке
+        equipmentCard.style.cursor = 'pointer';
+        equipmentCard.addEventListener('click', openModal);
+
+        // Сообщения от modal.html
+        window.addEventListener('message', (e) => {
+            const msg = e.data;
+            if (!msg || typeof msg !== 'object') return;
+
+            if (msg.type === 'modal:ready') {
+                modalReady = true;
+            }
+            if (msg.type === 'modal:closed') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+
+</html>

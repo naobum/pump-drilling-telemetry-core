@@ -4,10 +4,12 @@ namespace PumpDrillingTelemetryCore.Domain.Models;
 
 public class WorkSession
 {
+
     public IReadOnlyCollection<Measure> Measures { get; } = [];
     public IReadOnlyCollection<WorkInterval> WorkIntervals { get; } = [];
     public IReadOnlyDictionary<WorkMode, double> ModeDurations { get; private set; }
     public double Duration { get; private set; }
+
 
     private WorkSession(IReadOnlyCollection<Measure> measures, IReadOnlyCollection<WorkInterval> intervals)
     {
