@@ -11,7 +11,7 @@ namespace PumpDrillingTelemetryCore.Api.Middlewares
                 await next(context);
             }
 
-            // Обработка исключений десериализации JSON
+            // Handling JSON deserialization exceptions
             catch (System.Text.Json.JsonException ex)
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;

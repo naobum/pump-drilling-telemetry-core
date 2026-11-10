@@ -14,7 +14,7 @@ internal static class JsonErrorResponse
         })
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "Некорректный JSON",
+            Title = "Invalid JSON",
             Detail = exception.Message,
             Instance = instance,
             Extensions =
