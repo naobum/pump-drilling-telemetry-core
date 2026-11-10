@@ -5,11 +5,11 @@ VisualStudioVersion = 18.11.12324.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingTelemetryCore.Api", "src\PumpDrillingTelemetryCore.Api\PumpDrillingTelemetryCore.Api.csproj", "{B6CB0A98-8785-4B2C-BFCC-AFD40E534CB1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingTelemetryCore.Application", "PumpDrillingTelemetryCore.Application\PumpDrillingTelemetryCore.Application.csproj", "{B6EC8EF8-261A-4797-B1A2-A035345490FE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingTelemetryCore.Application", "src\PumpDrillingTelemetryCore.Application\PumpDrillingTelemetryCore.Application.csproj", "{B6EC8EF8-261A-4797-B1A2-A035345490FE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingCore.UnitTests", "PumpDrillingCore.UnitTests\PumpDrillingCore.UnitTests.csproj", "{BD28ADAE-1FB2-378A-258D-C93A820C183D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingTelemetryCore.Domain", "PumpDrillingTelemetryCore.Domain\PumpDrillingTelemetryCore.Domain.csproj", "{6C52B299-E034-FD99-3BFC-9EDE1AC1F144}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingTelemetryCore.Domain", "src\PumpDrillingTelemetryCore.Domain\PumpDrillingTelemetryCore.Domain.csproj", "{6C52B299-E034-FD99-3BFC-9EDE1AC1F144}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -18,7 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PumpDrillingTelemetryCore.Domain\PumpDrillingTelemetryCore.Domain.csproj" />
+    <ProjectReference Include="..\src\PumpDrillingTelemetryCore.Domain\PumpDrillingTelemetryCore.Domain.csproj" />
+    <ProjectReference Include="..\src\PumpDrillingTelemetryCore.Application\PumpDrillingTelemetryCore.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
