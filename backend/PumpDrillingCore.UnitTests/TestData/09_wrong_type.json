@@ -5,7 +5,7 @@
   "samples": [
     {
       "t_s": 0,
-      "pressure_mpa": "6",
+      "pressure_mpa": "6a",
       "rpm": 100,
       "valid": true
     },

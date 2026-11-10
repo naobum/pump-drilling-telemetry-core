@@ -28,9 +28,6 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
             return ValidationProblem(ModelState);
         }
 
-        if (request.Samples.Length == 0)
-            return BadRequest("samples must be an array of non-null samples.");
-
         var measures = request.Samples.Select(sample => new Measure(
             sample.TimeInSeconds, sample.Pressure, sample.Rpm, sample.IsValid)).ToArray();
         
@@ -64,9 +61,6 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
                 ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
             return ValidationProblem(ModelState);
         }
-
-        if (request.Samples.Length == 0)
-            return BadRequest("samples must be an array of non-null samples.");
 
         var measures = request.Samples.Select(sample => new Measure(
             sample.TimeInSeconds, sample.Pressure, sample.Rpm, sample.IsValid)).ToArray();

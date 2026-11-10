@@ -14,13 +14,16 @@ internal static class JsonErrorResponse
         })
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "Некорректный формат JSON",
+            Title = "Некорректный JSON",
             Detail = exception.Message,
-            Instance = instance
+            Instance = instance,
+            Extensions =
+            {
+                ["path"] = path,
+                ["lineNumber"] = exception.LineNumber,
+                ["bytePositionInLine"] = exception.BytePositionInLine
+            }
         };
-        problem.Extensions["path"] = path;
-        problem.Extensions["lineNumber"] = exception.LineNumber;
-        problem.Extensions["bytePositionInLine"] = exception.BytePositionInLine;
         return problem;
     }
 }
