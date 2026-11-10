@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Условные правила учебного прототипа. Числа не являются нормами эксплуатации реального насоса.",
+  "data_kind": "synthetic_training_data",
+  "encoding": "UTF-8",
+  "units": {
+    "t_s": "seconds_from_start",
+    "pressure_mpa": "MPa",
+    "rpm": "revolutions_per_minute"
+  },
+  "nominal_step_s": 1,
+  "max_interval_s": 1.5,
+  "required_root_fields": [
+    "schema_version",
+    "dataset_id",
+    "synthetic",
+    "samples"
+  ],
+  "required_sample_fields": [
+    "t_s",
+    "pressure_mpa",
+    "rpm",
+    "valid"
+  ],
+  "time_rule": "t_s — конечное число >= 0. Метки строго возрастают. Повтор или обратный порядок — ошибка формата.",
+  "numeric_rule": "Числа конечные, логические значения не считаются числами. pressure_mpa и rpm допускают null.",
+  "invalid_sample_rule": "valid=false, null или отрицательное значение pressure_mpa/rpm делают измерение недостоверным.",
+  "format_error_rule": "Пропущенное обязательное поле, неверный тип, неверная версия/структура или порядок времени: отклонить весь файл с понятным сообщением. Итоги не считать.",
+  "interval_rule": {
+    "start": "samples[i].t_s",
+    "end": "samples[i+1].t_s",
+    "bounds": "[start,end)",
+    "value_source": "левая запись samples[i]",
+    "last_sample": "только закрывает предыдущий интервал, собственного времени не добавляет",
+    "priority": [
+      "dt > max_interval_s: весь интервал относится к gap_s",
+      "иначе левая запись недостоверна: весь интервал относится к invalid_s",
+      "иначе определить работу/остановку по левой записи"
+    ],
+    "interpolation": false,
+    "extrapolation": false
+  },
+  "working_rule": {
+    "operator": "AND",
+    "rpm_gte": 50,
+    "pressure_mpa_gte": 1
+  },
+  "modes_for_working_intervals": [
+    {
+      "id": "low",
+      "label": "Низкое давление",
+      "pressure_mpa_gte": 1,
+      "pressure_mpa_lt": 5
+    },
+    {
+      "id": "normal",
+      "label": "Обычное давление",
+      "pressure_mpa_gte": 5,
+      "pressure_mpa_lt": 10
+    },
+    {
+      "id": "high",
+      "label": "Высокое давление",
+      "pressure_mpa_gte": 10
+    }
+  ],
+  "totals": {
+    "working_s": "low_s + normal_s + high_s",
+    "unknown_s": "gap_s + invalid_s",
+    "span_s": "working_s + stopped_s + unknown_s",
+    "empty_or_one_point": "все длительности равны нулю"
+  },
+  "diagnostics": "В данных нет подтверждённых меток промытия. Они позволяют проверить чтение, графики и учёт времени. Для диагностики нужен отдельный план и реальные размеченные записи."
+}
