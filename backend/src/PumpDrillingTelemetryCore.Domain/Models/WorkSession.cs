@@ -4,30 +4,37 @@ namespace PumpDrillingTelemetryCore.Domain.Models;
 
 public class WorkSession
 {
-    public IReadOnlyCollection<Measure> Measures { get; }
-    public IReadOnlyCollection<WorkInterval> WorkIntervals { get; }
+
+    public IReadOnlyCollection<Measure> Measures { get; } = [];
+    public IReadOnlyCollection<WorkInterval> WorkIntervals { get; } = [];
+    public IReadOnlyDictionary<WorkMode, double> ModeDurations { get; private set; }
+    public double Duration { get; private set; }
+
 
     private WorkSession(IReadOnlyCollection<Measure> measures, IReadOnlyCollection<WorkInterval> intervals)
     {
         Measures = measures;
         WorkIntervals = intervals;
+
+        var emptyDict = Enum.GetValues<WorkMode>().ToDictionary(mode => mode, _ => 0.0);
+        ModeDurations = new ReadOnlyDictionary<WorkMode, double>(emptyDict);
+        Duration = 0.0;
     }
 
-    // Расчет единичного интервала для двух Measure
     private static WorkInterval CalculateWorkInterval(Measure firstMeasure, Measure secondMeasure)
     {  
         if (secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds > 1.5)
         {
-            return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds,
-                WorkMode.Gapped);
+            return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.Gapped);
         }
-        else if (!firstMeasure.IsValid || firstMeasure.Rpm == null || firstMeasure.Rpm < 0 || 
+        
+        if (!firstMeasure.IsValid || firstMeasure.Rpm == null || firstMeasure.Rpm < 0 || 
             firstMeasure.Pressure == null || firstMeasure.Pressure < 0)
         {
-            return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds,
-                WorkMode.Unreached);
+            return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.Unreached);
         }
-        else if (firstMeasure is { Rpm: >= 50, Pressure: >= 1.0 })
+        
+        if (firstMeasure is { Rpm: >= 50, Pressure: >= 1.0 })
         {
             return firstMeasure.Pressure switch
             {
@@ -36,55 +43,45 @@ public class WorkSession
                 _ => new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.High)
             };
         }
-        else
-        {
-            return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds,
-                WorkMode.Stopped);
-        }
+
+        return new WorkInterval(secondMeasure.TimeInSeconds - firstMeasure.TimeInSeconds, WorkMode.Stopped);
     }
 
-    // Логика расчёта WorkInterval исходя из Measures 
     public static WorkSession Create(Measure[] measures)
     {
         var intervals = new List<WorkInterval>();
-        // Если в коллекции только один интервал, исходя из ожидаемого результата в ТЗ
         if (measures.Length < 2)
             return new WorkSession(measures, []);
-        // Цикл проходится по всей коллекции measures и в соответствии с правилами из ТЗ вычисляется режим для каждого интервала
+
         for (var i = 0; i < measures.Length - 1; i++)
         {
             var measure = measures[i];
             var nextMeasure = measures[i + 1];
-            var interval = CalculateWorkInterval(measure, nextMeasure);
-            intervals.Add(interval);
+            intervals.Add(CalculateWorkInterval(measure, nextMeasure));
         }
+
         return new WorkSession(measures, intervals);
     }
 
-    public WorkSessionSummary GetAnalytics()
+    public void CalculateAnalytics()
     {
-        if (WorkIntervals.Count == 0)
-        {
-            var emptyDict = Enum.GetValues<WorkMode>()
-                .ToDictionary(mode => mode, _ => 0.0);
-            return new WorkSessionSummary(new ReadOnlyDictionary<WorkMode, double>(emptyDict), 0.0);
-        }
-
-        // Общее время сессии: разница между первой и последней меткой (по ТЗ)
-        var totalSpan = Measures.Last().TimeInSeconds - Measures.First().TimeInSeconds;
-
-        // Инициализируем словарь с ключами-режимами WorkMode и нулевыми значениями
         var durationByMode = Enum.GetValues<WorkMode>()
             .ToDictionary(mode => mode, _ => 0.0);
-        // Считаем время для каждого режима
+
+        if (Measures.Count < 2 || WorkIntervals.Count == 0)
+        {
+            ModeDurations = new ReadOnlyDictionary<WorkMode, double>(durationByMode);
+            Duration = 0.0;
+            return;
+        }
+
+        Duration = Measures.Last().TimeInSeconds - Measures.First().TimeInSeconds;
+
         foreach (var interval in WorkIntervals)
         {
             durationByMode[interval.WorkMode] += interval.Duration;
         }
-        // Возвращаем запись WorkSessionSummary
-        return new WorkSessionSummary(
-            new ReadOnlyDictionary<WorkMode, double>(durationByMode),
-            totalSpan
-        );
+
+        ModeDurations = new ReadOnlyDictionary<WorkMode, double>(durationByMode);
     }
 }
