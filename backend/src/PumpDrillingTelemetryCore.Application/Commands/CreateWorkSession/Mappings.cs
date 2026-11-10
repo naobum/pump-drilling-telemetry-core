@@ -4,15 +4,15 @@ namespace PumpDrillingTelemetryCore.Application.Commands.CreateWorkSession;
 
 public static class Mappings
 {
-    public static WorkSessionSummaryResponse ToResponse(this WorkSessionSummary summary)
+    public static WorkSessionSummaryResponse ToResponse(this WorkSession session)
     {
-        var stoppedS = summary.ModeDurations[WorkMode.Stopped];
-        var gapS = summary.ModeDurations[WorkMode.Gapped];
-        var invalidS = summary.ModeDurations[WorkMode.Unreached];
+        var stoppedS = session.ModeDurations[WorkMode.Stopped];
+        var gapS = session.ModeDurations[WorkMode.Gapped];
+        var invalidS = session.ModeDurations[WorkMode.Unreached];
 
-        var lowS = summary.ModeDurations[WorkMode.Low];
-        var normalS = summary.ModeDurations[WorkMode.Normal];
-        var highS = summary.ModeDurations[WorkMode.High];
+        var lowS = session.ModeDurations[WorkMode.Low];
+        var normalS = session.ModeDurations[WorkMode.Normal];
+        var highS = session.ModeDurations[WorkMode.High];
 
         var workingS = lowS + normalS + highS;
         var unknownS = gapS + invalidS;
@@ -30,7 +30,7 @@ public static class Mappings
             GappedTime: gapS,
             InvalidTime: invalidS,
             UnknownTime: unknownS,
-            SpanTime: summary.Duration,
+            SpanTime: session.Duration,
             ModesWorkTime: modesWorkTime
         );
     }

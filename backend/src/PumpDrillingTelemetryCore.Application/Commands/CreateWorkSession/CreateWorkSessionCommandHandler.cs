@@ -14,8 +14,8 @@ public class CreateWorkSessionCommandHandler
         ArgumentNullException.ThrowIfNull(request.Measures);
 
         var workSession = WorkSession.Create(request.Measures);
-        var summary = workSession.GetAnalytics();
-        var response = summary.ToResponse();
+        workSession.CalculateAnalytics();
+        var response = workSession.ToResponse();
 
         return Task.FromResult(response);
     }

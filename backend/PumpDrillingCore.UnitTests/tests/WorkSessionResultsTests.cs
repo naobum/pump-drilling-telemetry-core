@@ -53,15 +53,15 @@ namespace PumpDrillingCore.UnitTests.tests
             // [Act]
             // 2. Расчет сессии
             var session = WorkSession.Create(measures.ToArray());
-            var summary = session.GetAnalytics();
+            session.CalculateAnalytics();
 
             // 3. Вычисление агрегированных величин по ТЗ
-            var stoppedS = summary.ModeDurations[WorkMode.Stopped];
-            var gapS = summary.ModeDurations[WorkMode.Gapped];
-            var invalidS = summary.ModeDurations[WorkMode.Unreached];
-            var lowS = summary.ModeDurations[WorkMode.Low];
-            var normalS = summary.ModeDurations[WorkMode.Normal];
-            var highS = summary.ModeDurations[WorkMode.High];
+            var stoppedS = session.ModeDurations[WorkMode.Stopped];
+            var gapS = session.ModeDurations[WorkMode.Gapped];
+            var invalidS = session.ModeDurations[WorkMode.Unreached];
+            var lowS = session.ModeDurations[WorkMode.Low];
+            var normalS = session.ModeDurations[WorkMode.Normal];
+            var highS = session.ModeDurations[WorkMode.High];
 
             var workingS = lowS + normalS + highS;
             var unknownS = gapS + invalidS;
@@ -69,7 +69,7 @@ namespace PumpDrillingCore.UnitTests.tests
             // [Assert]
             // 4. Проверка всех полей из expected_results.json
             Assert.Equal(expected.GetProperty("sample_count").Deserialize<double>(), session.Measures.Count);
-            Assert.Equal(expected.GetProperty("span_s").Deserialize<double>(), summary.Duration, 3);
+            Assert.Equal(expected.GetProperty("span_s").Deserialize<double>(), session.Duration, 3);
             Assert.Equal(expected.GetProperty("working_s").Deserialize<double>(), workingS, 3);
             Assert.Equal(expected.GetProperty("stopped_s").Deserialize<double>(), stoppedS, 3);
             Assert.Equal(expected.GetProperty("gap_s").Deserialize<double>(), gapS, 3);
@@ -83,7 +83,7 @@ namespace PumpDrillingCore.UnitTests.tests
             Assert.Equal(modes.GetProperty("high").Deserialize<double>(), highS, 3);
 
             // 5. Контрольное уравнение из ТЗ: span_s = working_s + stopped_s + unknown_s
-            Assert.Equal(summary.Duration, workingS + stoppedS + unknownS, 3);
+            Assert.Equal(session.Duration, workingS + stoppedS + unknownS, 3);
         }
     }
 }
