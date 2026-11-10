@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Анализ работы — Насос</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/css/modal.css">
+</head>
+<body>
+
+<div class="modal-backdrop" id="backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <header class="modal-head">
+      <h2 id="modalTitle">Анализ работы Насос</h2>
+      <button class="modal-close" id="modalClose" aria-label="Закрыть">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="modal-body">
+      <div class="metric-row"><span>Время работы</span><span class="value" id="dmTime">—</span></div>
+      <div class="metric-row"><span>Давление</span><span class="value" id="dmPressure">—</span></div>
+      <div class="metric-row"><span>Обороты</span><span class="value" id="dmRpm">—</span></div>
+      <div class="metric-row"><span>Режим работы</span><span class="value" id="dmMode">—</span></div>
+
+      <hr class="modal-divider">
+
+      <div class="metric-row"><span>Время пропущенного мониторинга</span><span class="value" id="dmMissed">—</span></div>
+      <div class="metric-row"><span>Длительность недостоверного мониторинга</span><span class="value" id="dmInvalid">—</span></div>
+      <div class="metric-row"><span>Общее неизвестное время</span><span class="value" id="dmUnknown">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================
+   Расчёт расширенных метрик на клиенте
+   =========================================================== */
+function toNumber(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const n = Number(v.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function fmtDuration(sec) {
+  if (sec === null || sec === undefined || sec < 0 || !Number.isFinite(sec)) return '—';
+  sec = Math.round(sec);
+  if (sec < 60) return `${sec} с`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s ? `${m} м ${s} с` : `${m} м`;
+}
+
+/**
+ * Считает метрики по samples.
+ * - missed  : суммарная длительность разрывов между соседними точками (dt > gapThreshold)
+ * - invalid : количество точек с valid=false / null / отрицательными значениями
+ * - unknown : missed + invalid (в секундах, 1 невалидная точка = 1 с условно)
+ */
+function computeExtendedMetrics(samples) {
+  if (!Array.isArray(samples) || samples.length === 0) {
+    return { missed: null, invalid: null, unknown: null };
+  }
+
+  const valid = samples
+    .filter(s => s && s.valid !== false && toNumber(s.t_s) !== null)
+    .map(s => toNumber(s.t_s))
+    .sort((a, b) => a - b);
+
+  // Разрывы
+  const gapThreshold = 5; // сек
+  let missed = 0;
+  for (let i = 1; i < valid.length; i++) {
+    const dt = valid[i] - valid[i - 1];
+    if (dt > gapThreshold) missed += (dt - 1);
+  }
+
+  // Невалидные точки
+  let invalid = 0;
+  for (const s of samples) {
+    if (!s || toNumber(s.t_s) === null) continue;
+    const bad =
+      s.valid === false ||
+      toNumber(s.pressure_mpa) === null ||
+      toNumber(s.rpm) === null ||
+      toNumber(s.pressure_mpa) < 0 ||
+      toNumber(s.rpm) < 0;
+    if (bad) invalid++;
+  }
+
+  const unknown = missed + invalid;
+  return { missed, invalid, unknown };
+}
+
+/* ===========================================================
+   Применение данных к DOM
+   =========================================================== */
+function updateModalFields(samples) {
+  const el = (id) => document.getElementById(id);
+
+  // Верхние 4 поля — берём последнюю валидную точку
+  if (Array.isArray(samples) && samples.length) {
+    const sorted = samples.slice()
+      .filter(s => s && s.valid !== false && toNumber(s.t_s) !== null)
+      .sort((a, b) => toNumber(a.t_s) - toNumber(b.t_s));
+    const last = sorted[sorted.length - 1];
+
+    const lastP = last ? toNumber(last.pressure_mpa) : null;
+    const lastR = last ? toNumber(last.rpm) : null;
+
+    el('dmTime').textContent     = last ? `${Math.round(toNumber(last.t_s) || 0)} с` : '—';
+    el('dmPressure').textContent = lastP !== null ? `${lastP} МПа` : '—';
+    el('dmRpm').textContent      = lastR !== null ? `${Math.round(lastR)} об/мин` : '—';
+
+    let mode = '—';
+    if (lastR === 0) mode = 'простой';
+    else if (lastR !== null && lastR < 100) mode = 'разгон';
+    else if (lastR !== null) mode = 'рабочий';
+    el('dmMode').textContent = mode;
+  } else {
+    el('dmTime').textContent = el('dmPressure').textContent =
+    el('dmRpm').textContent  = el('dmMode').textContent = '—';
+  }
+
+  // Расширенные
+  const ext = computeExtendedMetrics(samples);
+  el('dmMissed').textContent  = fmtDuration(ext.missed);
+  el('dmInvalid').textContent = fmtDuration(ext.invalid);
+  el('dmUnknown').textContent = fmtDuration(ext.unknown);
+}
+
+/* ===========================================================
+   Открытие / закрытие
+   =========================================================== */
+function openModal(samples) {
+  updateModalFields(samples);
+  document.body.classList.add('is-open');
+}
+
+function closeModal() {
+  document.body.classList.remove('is-open');
+  // сообщаем родителю, что модалку закрыли
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'modal:closed' }, '*');
+  }
+}
+
+// Клик по backdrop (но не по .modal) — закрыть
+document.getElementById('backdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'backdrop') closeModal();
+});
+
+// Крестик
+document.getElementById('modalClose').addEventListener('click', closeModal);
+
+// Esc
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+/* ===========================================================
+   Приём данных от родителя
+   =========================================================== */
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (!msg || typeof msg !== 'object') return;
+
+  if (msg.type === 'modal:open') {
+    openModal(msg.samples || []);
+  }
+  if (msg.type === 'modal:update') {
+    // если модалка открыта — обновляем поля на лету
+    if (document.body.classList.contains('is-open')) {
+      updateModalFields(msg.samples || []);
+    }
+  }
+  if (msg.type === 'modal:close') {
+    closeModal();
+  }
+});
+
+// Сообщаем родителю, что iframe готов принимать данные
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({ type: 'modal:ready' }, '*');
+}
+</script>
+</body>
+</html>

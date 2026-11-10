@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "02_boundaries",
+  "synthetic": true,
+  "samples": [
+    {
+      "t_s": 0,
+      "pressure_mpa": 0.999,
+      "rpm": 100,
+      "valid": true
+    },
+    {
+      "t_s": 1,
+      "pressure_mpa": 1,
+      "rpm": 49.999,
+      "valid": true
+    },
+    {
+      "t_s": 2,
+      "pressure_mpa": 1,
+      "rpm": 50,
+      "valid": true
+    },
+    {
+      "t_s": 3,
+      "pressure_mpa": 4.999,
+      "rpm": 100,
+      "valid": true
+    },
+    {
+      "t_s": 4,
+      "pressure_mpa": 5,
+      "rpm": 100,
+      "valid": true
+    },
+    {
+      "t_s": 5,
+      "pressure_mpa": 9.999,
+      "rpm": 100,
+      "valid": true
+    },
+    {
+      "t_s": 6,
+      "pressure_mpa": 10,
+      "rpm": 100,
+      "valid": true
+    },
+    {
+      "t_s": 7,
+      "pressure_mpa": 2,
+      "rpm": 0,
+      "valid": true
+    },
+    {
+      "t_s": 8,
+      "pressure_mpa": 0,
+      "rpm": 0,
+      "valid": true
+    }
+  ]
+}
