@@ -2,12 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace PumpDrillingCore.UnitTests.Tests;
+namespace PumpDrillingCore.FunctionalTests.Tests;
 
 // Run the API with the http launch profile before running these integration tests.
 public sealed class WorkSessionImportTests : IDisposable
 {
-    private readonly HttpClient client = new()
+    private readonly HttpClient _client = new()
     {
         BaseAddress = new Uri(Environment.GetEnvironmentVariable("PUMP_API_URL") ?? "http://localhost:5112")
     };
@@ -31,7 +31,7 @@ public sealed class WorkSessionImportTests : IDisposable
         file.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         form.Add(file, "file", fileName);
 
-        using var response = await client.PostAsync("/api/pump/work-session/import", form, TestContext.Current.CancellationToken);
+        using var response = await _client.PostAsync("/api/pump/work-session/import", form, TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var success = expected.GetProperty("status").GetString() == "ok";
         Assert.True(response.StatusCode == (success ? HttpStatusCode.OK : HttpStatusCode.BadRequest),
@@ -51,5 +51,5 @@ public sealed class WorkSessionImportTests : IDisposable
                 actual.RootElement.GetProperty("modes_s").GetProperty(mode).GetDouble(), 3);
     }
 
-    public void Dispose() => client.Dispose();
+    public void Dispose() => _client.Dispose();
 }

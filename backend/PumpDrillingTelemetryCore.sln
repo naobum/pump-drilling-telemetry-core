@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingCore.UnitTests"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingTelemetryCore.Domain", "src\PumpDrillingTelemetryCore.Domain\PumpDrillingTelemetryCore.Domain.csproj", "{6C52B299-E034-FD99-3BFC-9EDE1AC1F144}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingCore.FuntionalTests", "PumpDrillingCore.FuntionalTests\PumpDrillingCore.FuntionalTests.csproj", "{D3D57EB4-65E8-453E-BDAA-C6E680166407}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpDrillingCore.FunctionalTests", "PumpDrillingCore.FunctionalTests\PumpDrillingCore.FunctionalTests.csproj", "{D3D57EB4-65E8-453E-BDAA-C6E680166407}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
