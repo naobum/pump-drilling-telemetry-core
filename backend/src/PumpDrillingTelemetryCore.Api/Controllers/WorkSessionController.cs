@@ -12,13 +12,16 @@ namespace PumpDrillingTelemetryCore.Api.Controllers;
 
 [ApiController]
 [Route("api/pump/work-session")]
-public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkSessionRequest> validator, IWorkSessionStorage storage) : ControllerBase
+public sealed class WorkSessionController(
+    ISender sender, 
+    IValidator<CreateWorkSessionRequest> validator, 
+    IWorkSessionStorage storage) : ControllerBase
 {
     private const int MaxFileSize = 10 * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [HttpGet]
-    public ActionResult<WorkSessionSummaryResponse> GetCurrentSession()
+    public ActionResult<WorkSessionDetailsResponse> GetCurrentSession()
     {
         var session = storage.GetLatestSession();
         if (session is null)
@@ -42,10 +45,10 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
         var measures = request.Samples.Select(sample => new Measure(
             sample.TimeInSeconds, sample.Pressure, sample.Rpm, sample.IsValid)).ToArray();
         
-        var response = await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken);
-        storage.SaveSession(response);
+        var summary = await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken);
+        storage.SaveSession(new WorkSessionDetailsResponse(request.DatasetId, summary, measures));
 
-        return Ok(response);
+        return Ok(summary);
     }
 
     [HttpPost("import")]
@@ -92,14 +95,9 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
         var measures = request.Samples.Select(sample => new Measure(
             sample.TimeInSeconds, sample.Pressure, sample.Rpm, sample.IsValid)).ToArray();
 
-        var response = await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken);
-        storage.SaveSession(response);
+        var summary = await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken);
+        storage.SaveSession(new WorkSessionDetailsResponse(request.DatasetId, summary, measures));
 
-        return Ok(response);
+        return Ok(summary);
     }
 }
-
-
-
-
-

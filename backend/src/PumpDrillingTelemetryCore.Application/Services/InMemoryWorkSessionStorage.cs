@@ -4,10 +4,10 @@ namespace PumpDrillingTelemetryCore.Application.Services;
 
 public sealed class InMemoryWorkSessionStorage : IWorkSessionStorage
 {
-    private WorkSessionSummaryResponse? _latestSession;
+    private WorkSessionDetailsResponse? _latestSession;
     private readonly object _lock = new();
 
-    public WorkSessionSummaryResponse? GetLatestSession()
+    public WorkSessionDetailsResponse? GetLatestSession()
     {
         lock (_lock)
         {
@@ -15,7 +15,7 @@ public sealed class InMemoryWorkSessionStorage : IWorkSessionStorage
         }
     }
 
-    public void SaveSession(WorkSessionSummaryResponse session)
+    public void SaveSession(WorkSessionDetailsResponse session)
     {
         lock (_lock)
         {

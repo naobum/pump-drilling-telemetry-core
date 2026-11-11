@@ -159,10 +159,29 @@
         const chartRpm = new Chart(document.getElementById('chartRpm'), {
             type: 'line',
             data: {
-                datasets: [{
-                    data: [], borderColor: '#ef4444', borderWidth: 1.5,
-                    pointRadius: 0, pointHoverRadius: 3, tension: 0.15, spanGaps: false
-                }]
+                datasets: [
+                    {
+                        label: 'Обороты (вал.)',
+                        data: [], 
+                        borderColor: '#2563eb', 
+                        borderWidth: 1.5,
+                        pointRadius: 0, 
+                        pointHoverRadius: 3, 
+                        tension: 0.15, 
+                        spanGaps: false
+                    },
+                    {
+                        label: 'Недостоверно',
+                        type: 'scatter',
+                        data: [],
+                        borderColor: '#dc2626',
+                        backgroundColor: '#dc2626',
+                        pointStyle: 'crossRot',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        borderWidth: 2
+                    }
+                ]
             },
             options: chartDefaults('об/мин')
         });
@@ -170,19 +189,40 @@
         const chartPressure = new Chart(document.getElementById('chartPressure'), {
             type: 'line',
             data: {
-                datasets: [{
-                    data: [], borderColor: '#ef4444', borderWidth: 1.5,
-                    pointRadius: 0, pointHoverRadius: 3, tension: 0.15, spanGaps: false
-                }]
+                datasets: [
+                    {
+                        label: 'Давление (вал.)',
+                        data: [], 
+                        borderColor: '#059669', 
+                        borderWidth: 1.5,
+                        pointRadius: 0, 
+                        pointHoverRadius: 3, 
+                        tension: 0.15, 
+                        spanGaps: false
+                    },
+                    {
+                        label: 'Недостоверно',
+                        type: 'scatter',
+                        data: [],
+                        borderColor: '#dc2626',
+                        backgroundColor: '#dc2626',
+                        pointStyle: 'crossRot',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        borderWidth: 2
+                    }
+                ]
             },
             options: chartDefaults('МПа')
         });
 
+
         window.chartRpm = chartRpm;
         window.chartPressure = chartPressure;
 
-        function setChartData(chart, points) {
-            chart.data.datasets[0].data = points;
+        function setChartData(chart, validPoints, invalidPoints = []) {
+            chart.data.datasets[0].data = validPoints;
+            chart.data.datasets[1].data = invalidPoints;
             chart.update('none');
         }
         window.setChartData = setChartData;
@@ -259,38 +299,48 @@
         }
 
         function buildChartSeries(samples) {
-            const rawPoints = [];
-            let invalidCount = 0, outOfOrder = false, prevT = -Infinity;
+            const sorted = samples.slice().sort((a, b) => (toNumber(a.t_s) ?? 0) - (toNumber(b.t_s) ?? 0));
 
-            for (const s of samples) {
-                if (!isValidSample(s)) { invalidCount++; continue; }
+            const validLinePoints = [];
+            const invalidRpmPoints = [];
+            const invalidPressurePoints = [];
+            let invalidCount = 0;
+            let outOfOrder = false;
+            let prevT = -Infinity;
+
+            for (let i = 0; i < sorted.length; i++) {
+                const s = sorted[i];
                 const t = toNumber(s.t_s);
+                if (t === null) continue;
+
                 if (t < prevT) outOfOrder = true;
                 prevT = t;
-                
+
                 const p = toNumber(s.pressure_mpa);
                 const r = toNumber(s.rpm);
-                rawPoints.push({
-                    t,
-                    p: (p !== null && p >= 0) ? p : null,
-                    r: (r !== null && r >= 0) ? r : null
-                });
-            }
+                const isValid = s.valid !== false && p !== null && p >= 0 && r !== null && r >= 0;
 
-            rawPoints.sort((a, b) => a.t - b.t);
+                if (!isValid) {
+                    invalidCount++;
+                    // Отмечаем крестиком на нуле или по фактическому значению
+                    invalidRpmPoints.push({ x: t, y: (r !== null && r >= 0) ? r : 0 });
+                    invalidPressurePoints.push({ x: t, y: (p !== null && p >= 0) ? p : 0 });
+                } else {
+                    validLinePoints.push({ t, p, r });
+                }
+            }
 
             const rpm = [];
             const pressure = [];
 
-            for (let i = 0; i < rawPoints.length; i++) {
-                const pt = rawPoints[i];
+            // Формируем непрерывную кривую с разрывами при dt > 1.5c
+            for (let i = 0; i < validLinePoints.length; i++) {
+                const pt = validLinePoints[i];
                 if (i > 0) {
-                    const dt = pt.t - rawPoints[i - 1].t;
-                    // По ТЗ разрыв > 1.5 секунд
+                    const dt = pt.t - validLinePoints[i - 1].t;
                     if (dt > 1.5) {
-                        // Вставляем точку с null, чтобы разорвать кривую в Chart.js
-                        rpm.push({ x: rawPoints[i - 1].t + 0.0001, y: null });
-                        pressure.push({ x: rawPoints[i - 1].t + 0.0001, y: null });
+                        rpm.push({ x: validLinePoints[i - 1].t + 0.0001, y: null });
+                        pressure.push({ x: validLinePoints[i - 1].t + 0.0001, y: null });
                     }
                 }
                 rpm.push({ x: pt.t, y: pt.r });
@@ -300,6 +350,8 @@
             return {
                 rpm,
                 pressure,
+                invalidRpmPoints,
+                invalidPressurePoints,
                 invalidCount,
                 outOfOrder
             };
@@ -349,8 +401,8 @@
             }
             window.lastSamples = data.samples;
             const series = buildChartSeries(data.samples);
-            setChartData(chartRpm, series.rpm);
-            setChartData(chartPressure, series.pressure);
+            setChartData(chartRpm, series.rpm, series.invalidRpmPoints);
+            setChartData(chartPressure, series.pressure, series.invalidPressurePoints);
             updateEquipmentCard(data.samples, series);
 
             document.getElementById('datasetName').textContent = data.dataset_id ?? '';
@@ -398,14 +450,23 @@
                     headers: { 'Accept': 'application/json' },
                 });
                 if (res.status === 404 || res.status === 204) {
-                    // сессии пока нет — это нормально
                     setConnState('ok', 'подключено (нет данных)');
                     addLog({ time: fmtTime(new Date()), message: 'Сессия на бэке пока пуста', level: 'warn' });
                     return;
                 }
                 if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+                
                 const data = await res.json();
-                applyData(data, 'session');
+
+                // Сохраняем расчет для модалки
+                window.latestSummary = data.summary || null;
+
+                // Применяем точки к графикам и карточке оборудования
+                applyData({
+                    dataset_id: data.dataset_id,
+                    samples: data.samples || []
+                }, 'session');
+
                 setConnState('ok', 'подключено');
             } catch (e) {
                 setConnState('err', 'нет связи');
@@ -440,11 +501,11 @@
             stopPlayback(); // на случай, если уже что-то играет
 
             // Сбрасываем графики
-            setChartData(chartRpm, []);
-            setChartData(chartPressure, []);
+            setChartData(chartRpm, [], []);
+            setChartData(chartPressure, [], []);
             window.lastSamples = [];
 
-            const speedMs = 1000; // 1 точка = 1 секунда
+            const speedMs = 100; // 1 точка = 1 секунда
             const buffered = [];   // точки, которые уже проигрались
 
             playbackState = { timer: null, samples: allSamples, idx: 0, total: allSamples.length };

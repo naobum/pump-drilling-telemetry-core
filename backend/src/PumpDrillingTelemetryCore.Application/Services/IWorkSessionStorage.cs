@@ -4,6 +4,6 @@ namespace PumpDrillingTelemetryCore.Application.Services;
 
 public interface IWorkSessionStorage
 {
-    WorkSessionSummaryResponse? GetLatestSession();
-    void SaveSession(WorkSessionSummaryResponse session);
+    WorkSessionDetailsResponse? GetLatestSession();
+    void SaveSession(WorkSessionDetailsResponse session);
 }
