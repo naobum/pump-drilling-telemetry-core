@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "08_missing_rpm",
+  "synthetic": true,
+  "samples": [
+    {
+      "t_s": 0,
+      "pressure_mpa": 6,
+      "valid": true
+    },
+    {
+      "t_s": 1,
+      "pressure_mpa": 6.0,
+      "rpm": 100.0,
+      "valid": true
+    }
+  ]
+}
