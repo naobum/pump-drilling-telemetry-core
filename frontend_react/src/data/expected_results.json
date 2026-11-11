@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0",
+  "duration_unit": "seconds",
+  "results": {
+    "01_small.json": {
+      "status": "ok",
+      "sample_count": 13,
+      "span_s": 12,
+      "working_s": 9,
+      "stopped_s": 3,
+      "gap_s": 0,
+      "invalid_s": 0,
+      "unknown_s": 0,
+      "modes_s": {
+        "low": 3,
+        "normal": 3,
+        "high": 3
+      }
+    },
+    "02_boundaries.json": {
+      "status": "ok",
+      "sample_count": 9,
+      "span_s": 8,
+      "working_s": 5,
+      "stopped_s": 3,
+      "gap_s": 0,
+      "invalid_s": 0,
+      "unknown_s": 0,
+      "modes_s": {
+        "low": 2,
+        "normal": 2,
+        "high": 1
+      }
+    },
+    "03_gap_20min.json": {
+      "status": "ok",
+      "sample_count": 602,
+      "span_s": 1800,
+      "working_s": 600,
+      "stopped_s": 0,
+      "gap_s": 1200,
+      "invalid_s": 0,
+      "unknown_s": 1200,
+      "modes_s": {
+        "low": 0,
+        "normal": 600,
+        "high": 0
+      }
+    },
+    "04_invalid_values.json": {
+      "status": "ok",
+      "sample_count": 9,
+      "span_s": 8,
+      "working_s": 2,
+      "stopped_s": 1,
+      "gap_s": 0,
+      "invalid_s": 5,
+      "unknown_s": 5,
+      "modes_s": {
+        "low": 0,
+        "normal": 2,
+        "high": 0
+      }
+    },
+    "05_long_record.json": {
+      "status": "ok",
+      "sample_count": 1742,
+      "span_s": 1800,
+      "working_s": 1130,
+      "stopped_s": 600,
+      "gap_s": 60,
+      "invalid_s": 10,
+      "unknown_s": 70,
+      "modes_s": {
+        "low": 300,
+        "normal": 530,
+        "high": 300
+      }
+    },
+    "06_empty.json": {
+      "status": "ok",
+      "sample_count": 0,
+      "span_s": 0,
+      "working_s": 0,
+      "stopped_s": 0,
+      "gap_s": 0,
+      "invalid_s": 0,
+      "unknown_s": 0,
+      "modes_s": {
+        "low": 0,
+        "normal": 0,
+        "high": 0
+      }
+    },
+    "07_single_point.json": {
+      "status": "ok",
+      "sample_count": 1,
+      "span_s": 0,
+      "working_s": 0,
+      "stopped_s": 0,
+      "gap_s": 0,
+      "invalid_s": 0,
+      "unknown_s": 0,
+      "modes_s": {
+        "low": 0,
+        "normal": 0,
+        "high": 0
+      }
+    },
+    "08_missing_rpm.json": {
+      "status": "format_error",
+      "category": "missing_field",
+      "message_example": "В samples[0] отсутствует rpm.",
+      "totals": null
+    },
+    "09_wrong_type.json": {
+      "status": "format_error",
+      "category": "wrong_type",
+      "message_example": "В samples[0].pressure_mpa записана строка вместо числа.",
+      "totals": null
+    },
+    "10_duplicate_time.json": {
+      "status": "format_error",
+      "category": "non_increasing_time",
+      "message_example": "samples[1].t_s повторяет предыдущую метку времени.",
+      "totals": null
+    }
+  },
+  "message_note": "Текст сообщения может отличаться. Он должен объяснять причину ошибки и место в файле."
+}
