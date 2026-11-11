@@ -259,7 +259,7 @@
         }
 
         function buildChartSeries(samples) {
-            const rawPoints = [];
+            const rpmMap = new Map(), pressureMap = new Map();
             let invalidCount = 0, outOfOrder = false, prevT = -Infinity;
 
             for (const s of samples) {
@@ -267,41 +267,19 @@
                 const t = toNumber(s.t_s);
                 if (t < prevT) outOfOrder = true;
                 prevT = t;
-                
                 const p = toNumber(s.pressure_mpa);
                 const r = toNumber(s.rpm);
-                rawPoints.push({
-                    t,
-                    p: (p !== null && p >= 0) ? p : null,
-                    r: (r !== null && r >= 0) ? r : null
-                });
+                if (p !== null && p >= 0 && !pressureMap.has(t)) pressureMap.set(t, p);
+                if (r !== null && r >= 0 && !rpmMap.has(t)) rpmMap.set(t, r);
             }
 
-            rawPoints.sort((a, b) => a.t - b.t);
-
-            const rpm = [];
-            const pressure = [];
-
-            for (let i = 0; i < rawPoints.length; i++) {
-                const pt = rawPoints[i];
-                if (i > 0) {
-                    const dt = pt.t - rawPoints[i - 1].t;
-                    // По ТЗ разрыв > 1.5 секунд
-                    if (dt > 1.5) {
-                        // Вставляем точку с null, чтобы разорвать кривую в Chart.js
-                        rpm.push({ x: rawPoints[i - 1].t + 0.0001, y: null });
-                        pressure.push({ x: rawPoints[i - 1].t + 0.0001, y: null });
-                    }
-                }
-                rpm.push({ x: pt.t, y: pt.r });
-                pressure.push({ x: pt.t, y: pt.p });
-            }
+            const toPoints = (map) =>
+                Array.from(map.entries()).map(([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x);
 
             return {
-                rpm,
-                pressure,
-                invalidCount,
-                outOfOrder
+                rpm: toPoints(rpmMap),
+                pressure: toPoints(pressureMap),
+                invalidCount, outOfOrder
             };
         }
 
@@ -502,72 +480,42 @@
             if (!file) return;
 
             if (!/\.json$/i.test(file.name)) {
-                addLog({ time: fmtTime(new Date()), level: 'err', message: `Файл должен иметь расширение .json: ${file.name}` });
+                addLog({ time: fmtTime(new Date()), level: 'err', message: `Файл должен быть .json: ${file.name}` });
                 fileInput.value = '';
                 return;
             }
 
-            // 1. Отправляем файл на бэкенд для официального расчёта и валидации
-            const formData = new FormData();
-            formData.append('file', file, file.name);
-
-            uploadBtnText.textContent = 'Обработка...';
-            uploadBtn.classList.add('is-loading');
-
-            let backendSummary = null;
-
-            try {
-                const response = await fetch(API.base + API.importFile, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const resData = await response.json();
-
-                if (!response.ok) {
-                    // Ошибка валидации формата (файлы 08, 09, 10 и т.д.)
-                    const errorMsg = resData.detail || resData.title || JSON.stringify(resData.errors || resData);
-                    addLog({
-                        time: fmtTime(new Date()),
-                        level: 'err',
-                        message: `Ошибка формата файла «${file.name}»: ${errorMsg}`
-                    });
-                    stopPlayback();
-                    window.latestSummary = null;
-                    return;
-                }
-
-                backendSummary = resData;
-                window.latestSummary = backendSummary;
-
-                addLog({
-                    time: fmtTime(new Date()),
-                    level: 'ok',
-                    message: `Файл «${file.name}» успешно проверен сервером. Работа: ${backendSummary.working_s}с, Остановка: ${backendSummary.stopped_s}с, Неизвестно: ${backendSummary.unknown_s}с`
-                });
-            } catch (err) {
-                addLog({
-                    time: fmtTime(new Date()),
-                    level: 'err',
-                    message: `Ошибка связи с API (${API.base}): ${err.message}`
-                });
-            } finally {
-                uploadBtn.classList.remove('is-loading');
-                uploadBtnText.textContent = 'Загрузить файл';
-            }
-
-            // 2. Читаем локально для отрисовки графиков и воспроизведения
             try {
                 const text = await file.text();
                 const data = JSON.parse(text);
 
                 if (!Array.isArray(data.samples)) {
-                    throw new Error('В файле отсутствует массив samples: []');
+                    throw new Error('В файле нет поля samples: []');
+                }
+                if (!data.samples.length) {
+                    addLog({
+                        time: fmtTime(new Date()),
+                        message: `Файл «${file.name}» пуст`,
+                        level: 'warn',
+                    });
+                    return;
                 }
 
+                addLog({
+                    time: fmtTime(new Date()),
+                    message: `Файл «${file.name}» загружен (${data.samples.length} точек)`,
+                    level: 'ok',
+                });
+
                 playSamples(data.samples, data.dataset_id ?? file.name);
+
             } catch (err) {
                 console.error(err);
+                addLog({
+                    time: fmtTime(new Date()),
+                    level: 'err',
+                    message: `Ошибка чтения файла: ${err.message}`,
+                });
             } finally {
                 fileInput.value = '';
             }
@@ -594,11 +542,7 @@
 
         function openModal() {
             modalFrame.style.display = 'block';
-            sendToModal({ 
-                type: 'modal:open', 
-                samples: window.lastSamples || [],
-                summary: window.latestSummary || null
-            });
+            sendToModal({ type: 'modal:open', samples: window.lastSamples || [] });
         }
 
         function closeModal() {

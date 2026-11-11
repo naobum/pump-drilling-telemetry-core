@@ -6,26 +6,15 @@ using Microsoft.AspNetCore.Mvc;
 using PumpDrillingTelemetryCore.Api.Requests.CreateWorkSession;
 using PumpDrillingTelemetryCore.Application.Commands.CreateWorkSession;
 using PumpDrillingTelemetryCore.Domain.Models;
-using PumpDrillingTelemetryCore.Application.Services;
 
 namespace PumpDrillingTelemetryCore.Api.Controllers;
 
 [ApiController]
 [Route("api/pump/work-session")]
-public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkSessionRequest> validator, IWorkSessionStorage storage) : ControllerBase
+public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkSessionRequest> validator) : ControllerBase
 {
     private const int MaxFileSize = 10 * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    [HttpGet]
-    public ActionResult<WorkSessionSummaryResponse> GetCurrentSession()
-    {
-        var session = storage.GetLatestSession();
-        if (session is null)
-            return NoContent();
-
-        return Ok(session);
-    }
 
     [HttpPost]
     public async Task<ActionResult<WorkSessionSummaryResponse>> Create(
@@ -42,10 +31,7 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
         var measures = request.Samples.Select(sample => new Measure(
             sample.TimeInSeconds, sample.Pressure, sample.Rpm, sample.IsValid)).ToArray();
         
-        var response = await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken);
-        storage.SaveSession(response);
-
-        return Ok(response);
+        return Ok(await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken));
     }
 
     [HttpPost("import")]
@@ -61,20 +47,7 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
             return BadRequest("File must have a .json extension.");
 
         await using var stream = file.OpenReadStream();
-        CreateWorkSessionRequest? request;
-        try
-        {
-            request = await JsonSerializer.DeserializeAsync<CreateWorkSessionRequest>(stream, JsonOptions, cancellationToken);
-        }
-        catch (JsonException ex)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid JSON format",
-                Detail = ex.Message,
-                Status = StatusCodes.Status400BadRequest
-            });
-        }
+        var request = await JsonSerializer.DeserializeAsync<CreateWorkSessionRequest>(stream, JsonOptions, cancellationToken);
 
         if (request is null)
             return BadRequest("File must contain a work session object.");
@@ -92,10 +65,7 @@ public sealed class WorkSessionController(ISender sender, IValidator<CreateWorkS
         var measures = request.Samples.Select(sample => new Measure(
             sample.TimeInSeconds, sample.Pressure, sample.Rpm, sample.IsValid)).ToArray();
 
-        var response = await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken);
-        storage.SaveSession(response);
-
-        return Ok(response);
+        return Ok(await sender.Send(new CreateWorkSessionCommand(measures), cancellationToken));
     }
 }
 
