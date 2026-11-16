@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "07_single_point",
+  "synthetic": true,
+  "samples": [
+    {
+      "t_s": 0,
+      "pressure_mpa": 6.0,
+      "rpm": 100.0,
+      "valid": true
+    }
+  ]
+}
